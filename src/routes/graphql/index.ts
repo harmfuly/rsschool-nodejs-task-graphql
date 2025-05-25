@@ -9,19 +9,37 @@ const plugin: FastifyPluginAsyncTypebox = async (fastify) => {
   const rootValue = {
     memberTypes: () => prisma.memberType.findMany(),
     memberType: ({ id }: { id: string }) => prisma.memberType.findUnique({ where: { id } }),
+    
     users: () => prisma.user.findMany(),
-    user: ({ id }: { id: string }) => prisma.user.findUnique({ where: { id } }),
+    user: ({ id }: { id: string }) =>
+      prisma.user.findUnique({
+        where: { id },
+        include: {
+          profile: {
+            include: {
+              memberType: true
+            }
+          },
+          posts: true,
+          userSubscribedTo: true,
+          subscribedToUser: true
+        }
+      }),    
+    
     posts: () => prisma.post.findMany(),
     post: ({ id }: { id: string }) => prisma.post.findUnique({ where: { id } }),
+    
     profiles: () => prisma.profile.findMany(),
     profile: ({ id }: { id: string }) => prisma.profile.findUnique({ where: { id } }),
 
     createUser: ({ dto }: { dto: any }) => prisma.user.create({ data: dto }),
     createProfile: ({ dto }: { dto: any }) => prisma.profile.create({ data: dto }),
     createPost: ({ dto }: { dto: any }) => prisma.post.create({ data: dto }),
+    
     changePost: ({ id, dto }: { id: string; dto: any }) => prisma.post.update({ where: { id }, data: dto }),
     changeProfile: ({ id, dto }: { id: string; dto: any }) => prisma.profile.update({ where: { id }, data: dto }),
     changeUser: ({ id, dto }: { id: string; dto: any }) => prisma.user.update({ where: { id }, data: dto }),
+    
     deleteUser: async ({ id }: { id: string }) => {
       await prisma.user.delete({ where: { id } });
       return 'User deleted';
@@ -36,8 +54,15 @@ const plugin: FastifyPluginAsyncTypebox = async (fastify) => {
     },
   };
 
+  fastify.get('/graphql', async (req, reply) => {
+    reply.code(405).send({
+      message: 'GraphQL endpoint only supports POST requests.',
+      hint: 'Use a tool like Postman or VSCode Thunder Client to send a POST request.',
+    });
+  });
+
   fastify.route({
-    url: '/',
+    url: '/graphql',
     method: 'POST',
     schema: {
       ...createGqlResponseSchema,
